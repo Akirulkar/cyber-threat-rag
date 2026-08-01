@@ -4,6 +4,7 @@ from datetime import datetime
 from loguru import logger
 
 from app.ingestion.base import BaseIngestor
+from app.ingestion.downloader import downloader  # Import resilient downloader
 from app.ingestion.models import (
     SourceType,
     DocumentType,
@@ -38,16 +39,14 @@ class NVDIngestor(BaseIngestor):
 
         logger.info(f"Fetching up to {self.results_per_page} records from NVD API...")
 
-        response = requests.get(
+        response = downloader.fetch_json(
             self.BASE_URL,
             headers=self.headers,
             params=params,
             timeout=30,
         )
-        response.raise_for_status()
 
-        data = response.json()
-        cve_items = data.get("vulnerabilities", [])
+        cve_items = response.get("vulnerabilities", [])
         return cve_items
 
     def parse_raw_data(self, raw_item: Dict[str, Any]) -> DocumentMetadata:

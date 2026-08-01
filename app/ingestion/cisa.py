@@ -4,6 +4,7 @@ from typing import List, Dict, Any
 from loguru import logger
 
 from app.ingestion.base import BaseIngestor
+from app.ingestion.downloader import downloader  # Import resilient downloader
 from app.ingestion.models import (
     SourceType,
     DocumentType,
@@ -33,7 +34,7 @@ class CISAIngestor(BaseIngestor):
         response = requests.get(self.KEV_URL, timeout=30)
         response.raise_for_status()
 
-        payload = response.json()
+        payload = downloader.fetch_json(self.KEV_URL)
         vulnerabilities = payload.get("vulnerabilities", [])
 
         logger.info(

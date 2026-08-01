@@ -4,6 +4,7 @@ from typing import List, Dict, Any
 from loguru import logger
 
 from app.ingestion.base import BaseIngestor
+from app.ingestion.downloader import downloader  # Import resilient downloader
 from app.ingestion.models import (
     SourceType,
     DocumentType,
@@ -30,11 +31,9 @@ class MITREIngestor(BaseIngestor):
         """Download STIX bundle and extract only attack-pattern objects (Techniques)."""
         logger.info(f"Downloading MITRE Enterprise ATT&CK STIX data from GitHub...")
 
-        response = requests.get(self.STIX_URL, timeout=60)
-        response.raise_for_status()
+        response = downloader.fetch_json(self.STIX_URL, timeout=60)
 
-        bundle = response.json()
-        all_objects = bundle.get("objects", [])
+        all_objects = response.get("objects", [])
 
         # Filter for active attack-pattern (Technique) objects only
         techniques = [
