@@ -9,6 +9,7 @@ data/
 .pytest_cache/
 .env
 .vscode/
-logs/
+
 # Virtual environments
 .venv
+logs/
