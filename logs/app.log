@@ -7,3 +7,8 @@
 2026-07-31 17:11:48.536 | INFO     | __main__:fetch_raw_data:39 - Retrieved 1656 vulnerabilities from CISA KEV feed.
 2026-07-31 17:11:48.540 | INFO     | app.ingestion.base:run:79 - Fetched 10 raw items from CISA.
 2026-07-31 17:11:48.565 | INFO     | app.ingestion.base:run:121 - Finished CISA ingestion: Downloaded=10, Skipped=0, Failed=0
+2026-08-01 17:05:47.809 | INFO     | app.ingestion.base:run:68 - Starting ingestion for MITRE...
+2026-08-01 17:05:47.810 | INFO     | __main__:fetch_raw_data:31 - Downloading MITRE Enterprise ATT&CK STIX data from GitHub...
+2026-08-01 17:06:14.415 | INFO     | __main__:fetch_raw_data:47 - Retrieved 846 active MITRE ATT&CK techniques.
+2026-08-01 17:06:14.490 | INFO     | app.ingestion.base:run:79 - Fetched 10 raw items from MITRE.
+2026-08-01 17:06:14.515 | INFO     | app.ingestion.base:run:121 - Finished MITRE ingestion: Downloaded=10, Skipped=0, Failed=0
