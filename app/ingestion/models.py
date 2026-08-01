@@ -1,7 +1,7 @@
 from enum import Enum
 from datetime import datetime
 from typing import Optional, List
-from pydantic import BaseModel, HttpUrl, Field
+from pydantic import BaseModel, HttpUrl, Field, ConfigDict
 
 
 class SourceType(str, Enum):
@@ -26,6 +26,7 @@ class Severity(str, Enum):
 
 
 class DocumentMetadata(BaseModel):
+    model_config = ConfigDict(use_enum_values=True)
     document_id: str = Field(..., description="Unique ID e.g., CVE-2026-1234")
     source: SourceType
     document_type: DocumentType
@@ -36,9 +37,6 @@ class DocumentMetadata(BaseModel):
     severity: Severity = Severity.UNKNOWN
     vendor: Optional[str] = None
     product: Optional[str] = None
-
-    class Config:
-        use_enum_values = True
 
 
 class RawDocument(BaseModel):
