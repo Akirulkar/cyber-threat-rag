@@ -12,3 +12,20 @@
 2026-08-01 17:06:14.415 | INFO     | __main__:fetch_raw_data:47 - Retrieved 846 active MITRE ATT&CK techniques.
 2026-08-01 17:06:14.490 | INFO     | app.ingestion.base:run:79 - Fetched 10 raw items from MITRE.
 2026-08-01 17:06:14.515 | INFO     | app.ingestion.base:run:121 - Finished MITRE ingestion: Downloaded=10, Skipped=0, Failed=0
+2026-08-01 17:11:22.320 | INFO     | __main__:run_all_ingestors:21 - === Starting Security Ingestion Pipeline Run ===
+2026-08-01 17:11:22.321 | INFO     | app.ingestion.base:run:68 - Starting ingestion for NVD...
+2026-08-01 17:11:22.322 | INFO     | app.ingestion.nvd:fetch_raw_data:39 - Fetching up to 50 records from NVD API...
+2026-08-01 17:11:23.265 | INFO     | app.ingestion.base:run:79 - Fetched 50 raw items from NVD.
+2026-08-01 17:11:23.420 | INFO     | app.ingestion.base:run:121 - Finished NVD ingestion: Downloaded=50, Skipped=0, Failed=0
+2026-08-01 17:11:23.421 | INFO     | app.ingestion.base:run:68 - Starting ingestion for CISA...
+2026-08-01 17:11:23.422 | INFO     | app.ingestion.cisa:fetch_raw_data:31 - Downloading CISA KEV catalog from https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json...
+2026-08-01 17:11:23.903 | INFO     | app.ingestion.cisa:fetch_raw_data:39 - Retrieved 1656 vulnerabilities from CISA KEV feed.
+2026-08-01 17:11:23.906 | INFO     | app.ingestion.base:run:79 - Fetched 1656 raw items from CISA.
+2026-08-01 17:11:26.096 | INFO     | app.ingestion.base:run:121 - Finished CISA ingestion: Downloaded=1646, Skipped=10, Failed=0
+2026-08-01 17:11:26.098 | INFO     | app.ingestion.base:run:68 - Starting ingestion for MITRE...
+2026-08-01 17:11:26.098 | INFO     | app.ingestion.mitre:fetch_raw_data:31 - Downloading MITRE Enterprise ATT&CK STIX data from GitHub...
+2026-08-01 17:11:27.564 | INFO     | app.ingestion.mitre:fetch_raw_data:47 - Retrieved 846 active MITRE ATT&CK techniques.
+2026-08-01 17:11:27.625 | INFO     | app.ingestion.base:run:79 - Fetched 846 raw items from MITRE.
+2026-08-01 17:11:28.809 | INFO     | app.ingestion.base:run:121 - Finished MITRE ingestion: Downloaded=836, Skipped=10, Failed=0
+2026-08-01 17:11:28.812 | INFO     | __main__:run_all_ingestors:43 - === Finished Ingestion Pipeline Run in 6.49 seconds ===
+2026-08-01 17:11:28.813 | INFO     | __main__:run_all_ingestors:50 - Pipeline Totals: Downloaded=2532 | Skipped=20 | Failed=0
