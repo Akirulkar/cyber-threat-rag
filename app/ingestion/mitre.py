@@ -1,10 +1,9 @@
 # app/ingestion/mitre.py
-import requests
 from typing import List, Dict, Any
 from loguru import logger
 
 from app.ingestion.base import BaseIngestor
-from app.ingestion.downloader import downloader  # Import resilient downloader
+from app.ingestion.downloader import downloader
 from app.ingestion.models import (
     SourceType,
     DocumentType,
@@ -16,26 +15,23 @@ from app.ingestion.models import (
 class MITREIngestor(BaseIngestor):
     """Ingestor implementation for MITRE ATT&CK Techniques (Enterprise Matrix)."""
 
-    # Public STIX 2.1 JSON repository for MITRE Enterprise ATT&CK
     STIX_URL = "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json"
 
     def __init__(self, data_dir: str = "data/raw", limit: int = None):
         super().__init__(data_dir=data_dir)
-        self.limit = limit  # Optional cap for testing/debugging
+        self.limit = limit  # Default None fetches ALL techniques
 
     @classmethod
     def get_source_type(cls) -> SourceType:
         return SourceType.MITRE
 
     def fetch_raw_data(self) -> List[Dict[str, Any]]:
-        """Download STIX bundle and extract only attack-pattern objects (Techniques)."""
-        logger.info(f"Downloading MITRE Enterprise ATT&CK STIX data from GitHub...")
+        """Download STIX bundle and extract all active attack-pattern objects."""
+        logger.info("Downloading MITRE Enterprise ATT&CK STIX data from GitHub...")
 
-        response = downloader.fetch_json(self.STIX_URL, timeout=60)
+        payload = downloader.fetch_json(self.STIX_URL, timeout=120)
+        all_objects = payload.get("objects", [])
 
-        all_objects = response.get("objects", [])
-
-        # Filter for active attack-pattern (Technique) objects only
         techniques = [
             obj
             for obj in all_objects
@@ -43,7 +39,9 @@ class MITREIngestor(BaseIngestor):
             and not obj.get("x_mitre_deprecated", False)
         ]
 
-        logger.info(f"Retrieved {len(techniques)} active MITRE ATT&CK techniques.")
+        logger.info(
+            f"Retrieved total {len(techniques)} active MITRE ATT&CK techniques."
+        )
 
         if self.limit:
             return techniques[: self.limit]
@@ -54,14 +52,12 @@ class MITREIngestor(BaseIngestor):
         """Parse raw STIX attack-pattern into standardized DocumentMetadata."""
         external_refs = raw_item.get("external_references", [])
 
-        # Find the mitre-attack external reference containing the technique ID (e.g., T1003)
         mitre_ref = next(
             (ref for ref in external_refs if ref.get("source_name") == "mitre-attack"),
             None,
         )
 
         if not mitre_ref or "external_id" not in mitre_ref:
-            # Fallback to STIX ID if external_id is missing
             technique_id = raw_item.get("id", "").replace("attack-pattern--", "MITRE-")
             tech_url = "https://attack.mitre.org/"
         else:
@@ -87,15 +83,14 @@ class MITREIngestor(BaseIngestor):
             url=tech_url,
             published_date=created_date,
             updated_date=modified_date,
-            severity=Severity.UNKNOWN,  # ATT&CK techniques describe behavior, not severity
+            severity=Severity.UNKNOWN,
         )
 
 
 if __name__ == "__main__":
     from app.core.logger import logger
 
-    # Test run with first 10 items
-    ingestor = MITREIngestor(limit=10)
+    ingestor = MITREIngestor()
     summary = ingestor.run()
 
     print("\n--- MITRE Ingestion Run Completed ---")

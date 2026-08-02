@@ -1,10 +1,9 @@
-import requests
+import time
 from typing import List, Dict, Any, Optional
-from datetime import datetime
 from loguru import logger
 
 from app.ingestion.base import BaseIngestor
-from app.ingestion.downloader import downloader  # Import resilient downloader
+from app.ingestion.downloader import downloader
 from app.ingestion.models import (
     SourceType,
     DocumentType,
@@ -19,9 +18,10 @@ class NVDIngestor(BaseIngestor):
 
     BASE_URL = "https://services.nvd.nist.gov/rest/json/cves/2.0"
 
-    def __init__(self, data_dir: str = "data/raw", results_per_page: int = 50):
+    def __init__(self, data_dir: str = "data/raw", results_per_page: int = 2000):
         super().__init__(data_dir=data_dir)
-        self.results_per_page = results_per_page
+        # NVD API allows a maximum of 2,000 results per request
+        self.results_per_page = min(results_per_page, 2000)
         self.headers = {}
         if NVD_API_KEY:
             self.headers["apiKey"] = NVD_API_KEY
@@ -31,23 +31,53 @@ class NVDIngestor(BaseIngestor):
         return SourceType.NVD
 
     def fetch_raw_data(self) -> List[Dict[str, Any]]:
-        """Fetch latest CVE items from NVD API v2.0."""
-        params = {
-            "resultsPerPage": self.results_per_page,
-            "startIndex": 0,
-        }
+        """Paginate through the entire NVD v2.0 REST API to fetch ALL CVEs."""
+        all_cves: List[Dict[str, Any]] = []
+        start_index = 0
 
-        logger.info(f"Fetching up to {self.results_per_page} records from NVD API...")
+        # NVD rate limits: 50 requests/30s with API key, 5 requests/30s without key
+        sleep_delay = 0.6 if NVD_API_KEY else 6.0
 
-        response = downloader.fetch_json(
-            self.BASE_URL,
-            headers=self.headers,
-            params=params,
-            timeout=30,
+        logger.info(
+            f"Beginning full dataset ingestion from NVD API "
+            f"(page size: {self.results_per_page}, key present: {bool(NVD_API_KEY)})..."
         )
 
-        cve_items = response.get("vulnerabilities", [])
-        return cve_items
+        while True:
+            params = {
+                "resultsPerPage": self.results_per_page,
+                "startIndex": start_index,
+            }
+
+            response = downloader.fetch_json(
+                self.BASE_URL,
+                headers=self.headers,
+                params=params,
+                timeout=60,
+            )
+
+            vulnerabilities = response.get("vulnerabilities", [])
+            total_results = response.get("totalResults", 0)
+
+            all_cves.extend(vulnerabilities)
+
+            logger.info(
+                f"Fetched {len(all_cves)} / {total_results} CVEs "
+                f"(Batch: {start_index} - {start_index + len(vulnerabilities)})"
+            )
+
+            start_index += len(vulnerabilities)
+
+            # Exit loop when all records are fetched or no items returned
+            if start_index >= total_results or not vulnerabilities:
+                break
+
+            time.sleep(sleep_delay)
+
+        logger.info(
+            f"Successfully retrieved total {len(all_cves)} raw records from NVD."
+        )
+        return all_cves
 
     def parse_raw_data(self, raw_item: Dict[str, Any]) -> DocumentMetadata:
         """Parse raw NVD JSON vulnerability item into standardized DocumentMetadata."""
@@ -57,22 +87,18 @@ class NVDIngestor(BaseIngestor):
         if not cve_id:
             raise ValueError("Missing CVE ID in raw NVD payload")
 
-        # 1. Extract Description / Title
         descriptions = cve_data.get("descriptions", [])
         english_desc = next(
             (d["value"] for d in descriptions if d.get("lang") == "en"),
             "No description available",
         )
-        # NVD doesn't provide explicit titles, so truncate description for title
         title = (
             (english_desc[:117] + "...") if len(english_desc) > 120 else english_desc
         )
 
-        # 2. Extract CVSS Severity (Check CVSS v3.1, then v3.0, then v2)
         metrics = cve_data.get("metrics", {})
         severity = self._extract_severity(metrics)
 
-        # 3. Extract Dates (Pydantic auto-parses ISO 8601 strings to datetime)
         published_str = cve_data.get("published")
         updated_str = cve_data.get("lastModified")
 
@@ -121,10 +147,10 @@ class NVDIngestor(BaseIngestor):
 if __name__ == "__main__":
     from app.core.logger import logger
 
-    ingestor = NVDIngestor(results_per_page=5)
+    ingestor = NVDIngestor()
     summary = ingestor.run()
 
-    print("\n--- Ingestion Run Completed ---")
+    print("\n--- NVD Ingestion Completed ---")
     print(f"Downloaded: {summary.downloaded_count}")
     print(f"Skipped: {summary.skipped_count}")
     print(f"Failed: {summary.failed_count}")

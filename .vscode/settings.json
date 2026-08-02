@@ -2,6 +2,7 @@
   "[python]": {
     "editor.defaultFormatter": "ms-python.black-formatter",
     "editor.formatOnSave": true,
+    "python.terminal.useEnvFile": true,
     "editor.codeActionsOnSave": {
       "source.organizeImports": "always",
       "source.fixAll.ruff": "always"

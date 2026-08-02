@@ -1,10 +1,9 @@
 # app/ingestion/cisa.py
-import requests
 from typing import List, Dict, Any
 from loguru import logger
 
 from app.ingestion.base import BaseIngestor
-from app.ingestion.downloader import downloader  # Import resilient downloader
+from app.ingestion.downloader import downloader
 from app.ingestion.models import (
     SourceType,
     DocumentType,
@@ -16,29 +15,25 @@ from app.ingestion.models import (
 class CISAIngestor(BaseIngestor):
     """Ingestor implementation for CISA Known Exploited Vulnerabilities (KEV) feed."""
 
-    # Public CISA KEV JSON endpoint
     KEV_URL = "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
 
     def __init__(self, data_dir: str = "data/raw", limit: int = None):
         super().__init__(data_dir=data_dir)
-        self.limit = limit  # Optional limit for testing/debugging
+        self.limit = limit  # Default None fetches ALL records
 
     @classmethod
     def get_source_type(cls) -> SourceType:
         return SourceType.CISA
 
     def fetch_raw_data(self) -> List[Dict[str, Any]]:
-        """Download CISA KEV JSON feed."""
+        """Download complete CISA KEV JSON feed via resilient downloader."""
         logger.info(f"Downloading CISA KEV catalog from {self.KEV_URL}...")
 
-        response = requests.get(self.KEV_URL, timeout=30)
-        response.raise_for_status()
-
-        payload = downloader.fetch_json(self.KEV_URL)
+        payload = downloader.fetch_json(self.KEV_URL, timeout=60)
         vulnerabilities = payload.get("vulnerabilities", [])
 
         logger.info(
-            f"Retrieved {len(vulnerabilities)} vulnerabilities from CISA KEV feed."
+            f"Retrieved total {len(vulnerabilities)} vulnerabilities from CISA KEV feed."
         )
 
         if self.limit:
@@ -53,7 +48,6 @@ class CISAIngestor(BaseIngestor):
         if not cve_id:
             raise ValueError("Missing cveID in CISA item")
 
-        # CISA KEV entries are actively exploited in the wild, default severity to HIGH/CRITICAL
         title = raw_item.get("vulnerabilityName", f"CISA KEV Entry: {cve_id}")
         vendor = raw_item.get("vendorProject")
         product = raw_item.get("product")
@@ -67,9 +61,9 @@ class CISAIngestor(BaseIngestor):
             source=SourceType.CISA,
             document_type=DocumentType.KEV,
             title=title,
-            url=f"https://www.cisa.gov/known-exploited-vulnerabilities-catalog",
-            published_date=date_added,  # Pydantic parses "YYYY-MM-DD" automatically
-            severity=Severity.HIGH,  # KEV entries represent actively exploited threats
+            url="https://www.cisa.gov/known-exploited-vulnerabilities-catalog",
+            published_date=date_added,
+            severity=Severity.HIGH,
             vendor=vendor,
             product=product,
         )
@@ -78,8 +72,7 @@ class CISAIngestor(BaseIngestor):
 if __name__ == "__main__":
     from app.core.logger import logger
 
-    # Test run with first 10 items
-    ingestor = CISAIngestor(limit=10)
+    ingestor = CISAIngestor()
     summary = ingestor.run()
 
     print("\n--- CISA Ingestion Run Completed ---")
