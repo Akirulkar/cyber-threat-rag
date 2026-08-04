@@ -1,5 +1,7 @@
+# app/ingestion/nvd.py
 import time
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
+from datetime import datetime, timezone
 from loguru import logger
 
 from app.ingestion.base import BaseIngestor
@@ -9,18 +11,18 @@ from app.ingestion.models import (
     DocumentType,
     DocumentMetadata,
     Severity,
+    IngestionSummary,
 )
 from app.core.config import NVD_API_KEY
 
 
 class NVDIngestor(BaseIngestor):
-    """Ingestor implementation for National Vulnerability Database (NVD) CVEs."""
+    """Ingestor implementation for National Vulnerability Database (NVD) CVEs with batch persistence."""
 
     BASE_URL = "https://services.nvd.nist.gov/rest/json/cves/2.0"
 
     def __init__(self, data_dir: str = "data/raw", results_per_page: int = 2000):
         super().__init__(data_dir=data_dir)
-        # NVD API allows a maximum of 2,000 results per request
         self.results_per_page = min(results_per_page, 2000)
         self.headers = {}
         if NVD_API_KEY:
@@ -30,18 +32,18 @@ class NVDIngestor(BaseIngestor):
     def get_source_type(cls) -> SourceType:
         return SourceType.NVD
 
-    def fetch_raw_data(self) -> List[Dict[str, Any]]:
-        """Paginate through the entire NVD v2.0 REST API to fetch ALL CVEs."""
-        all_cves: List[Dict[str, Any]] = []
-        start_index = 0
-
-        # NVD rate limits: 50 requests/30s with API key, 5 requests/30s without key
-        sleep_delay = 0.6 if NVD_API_KEY else 6.0
-
-        logger.info(
-            f"Beginning full dataset ingestion from NVD API "
-            f"(page size: {self.results_per_page}, key present: {bool(NVD_API_KEY)})..."
+    def run(self) -> IngestionSummary:
+        """Overridden run method to perform streaming batch ingestion and disk persistence."""
+        summary = IngestionSummary(
+            source=self.get_source_type(),
+            start_time=datetime.now(timezone.utc),
+            end_time=datetime.now(timezone.utc),
         )
+
+        logger.info(f"Starting streaming ingestion for {self.get_source_type().value}...")
+        
+        start_index = 0
+        sleep_delay = 0.6 if NVD_API_KEY else 6.0
 
         while True:
             params = {
@@ -49,35 +51,51 @@ class NVDIngestor(BaseIngestor):
                 "startIndex": start_index,
             }
 
-            response = downloader.fetch_json(
-                self.BASE_URL,
-                headers=self.headers,
-                params=params,
-                timeout=60,
-            )
+            try:
+                response = downloader.fetch_json(
+                    self.BASE_URL,
+                    headers=self.headers,
+                    params=params,
+                    timeout=60,
+                )
+            except Exception as e:
+                logger.error(f"Failed to fetch batch starting at index {start_index}: {e}")
+                summary.failed_count += self.results_per_page
+                break
 
             vulnerabilities = response.get("vulnerabilities", [])
             total_results = response.get("totalResults", 0)
 
-            all_cves.extend(vulnerabilities)
-
-            logger.info(
-                f"Fetched {len(all_cves)} / {total_results} CVEs "
-                f"(Batch: {start_index} - {start_index + len(vulnerabilities)})"
-            )
+            # Process and save this batch immediately!
+            for raw_item in vulnerabilities:
+                try:
+                    metadata = self.parse_raw_data(raw_item)
+                    saved = self.save_raw_document(metadata, raw_item)
+                    if saved:
+                        summary.downloaded_count += 1
+                    else:
+                        summary.skipped_count += 1
+                except Exception as parse_err:
+                    logger.warning(f"Failed parsing item in batch {start_index}: {parse_err}")
+                    summary.failed_count += 1
 
             start_index += len(vulnerabilities)
+            logger.info(
+                f"Progress: {start_index} / {total_results} CVEs evaluated | "
+                f"Saved: {summary.downloaded_count} | Skipped: {summary.skipped_count}"
+            )
 
-            # Exit loop when all records are fetched or no items returned
             if start_index >= total_results or not vulnerabilities:
                 break
 
             time.sleep(sleep_delay)
 
+        summary.end_time = datetime.now(timezone.utc)
         logger.info(
-            f"Successfully retrieved total {len(all_cves)} raw records from NVD."
+            f"Finished NVD ingestion: Downloaded={summary.downloaded_count}, "
+            f"Skipped={summary.skipped_count}, Failed={summary.failed_count}"
         )
-        return all_cves
+        return summary
 
     def parse_raw_data(self, raw_item: Dict[str, Any]) -> DocumentMetadata:
         """Parse raw NVD JSON vulnerability item into standardized DocumentMetadata."""
@@ -92,9 +110,7 @@ class NVDIngestor(BaseIngestor):
             (d["value"] for d in descriptions if d.get("lang") == "en"),
             "No description available",
         )
-        title = (
-            (english_desc[:117] + "...") if len(english_desc) > 120 else english_desc
-        )
+        title = (english_desc[:117] + "...") if len(english_desc) > 120 else english_desc
 
         metrics = cve_data.get("metrics", {})
         severity = self._extract_severity(metrics)
@@ -117,7 +133,6 @@ class NVDIngestor(BaseIngestor):
         )
 
     def _extract_severity(self, metrics: Dict[str, Any]) -> Severity:
-        """Extract severity rating from CVSS metrics payload."""
         cvss_v31 = metrics.get("cvssMetricV31", [])
         if cvss_v31:
             base_severity = cvss_v31[0].get("cvssData", {}).get("baseSeverity", "")
@@ -137,7 +152,6 @@ class NVDIngestor(BaseIngestor):
 
     @staticmethod
     def _map_severity(raw_severity: str) -> Severity:
-        """Map raw string severity to Severity Enum."""
         sev_upper = raw_severity.upper()
         if sev_upper in Severity.__members__:
             return Severity[sev_upper]
