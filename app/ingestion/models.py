@@ -44,7 +44,7 @@ class RawDocument(BaseModel):
 
     metadata: DocumentMetadata
     raw_content: dict  # Or string/bytes if file is PDF/HTML
-    file_path: str
+    file_path: Optional[str] = None
 
 
 class IngestionSummary(BaseModel):

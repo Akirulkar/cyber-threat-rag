@@ -13,3 +13,5 @@ data/
 # Virtual environments
 .venv
 logs/
+vectorstore/
+logs/
