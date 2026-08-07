@@ -3,7 +3,7 @@ from pathlib import Path
 
 from app.core.logger import logger
 from app.models.chunk import Chunk
-from app.vectorstore.sqlite_store import SQLiteMetadataStore
+from app.vectorstore_scripts.sqlite_store import SQLiteMetadataStore
 
 
 def migrate_pickle_to_sqlite(vectorstore_dir: str = "vectorstore"):

@@ -4,7 +4,7 @@ from typing import List
 
 from app.core.logger import logger
 from app.embedding.embedder import TextEmbedder
-from app.vectorstore.faiss_store import FAISSVectorStore
+from app.vectorstore_scripts.faiss_store import FAISSVectorStore
 
 
 def verify_semantic_search(

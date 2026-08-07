@@ -4,7 +4,7 @@ import numpy as np
 
 from app.core.logger import logger
 from app.embedding.embedder import TextEmbedder
-from app.vectorstore.sqlite_store import SQLiteMetadataStore
+from app.vectorstore_scripts.sqlite_store import SQLiteMetadataStore
 
 
 def fast_search(
