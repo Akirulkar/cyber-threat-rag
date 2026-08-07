@@ -3,7 +3,7 @@ from typing import List, Optional
 from langchain_core.messages import BaseMessage
 from langchain_openai import ChatOpenAI
 from langchain_ollama import ChatOllama
-from app.core.config import NVIDIA_API_KEY
+from app.core.config import settings
 from app.core.logger import logger
 
 
@@ -13,7 +13,7 @@ class LLMEngine:
     def __init__(
         self,
         provider: str = "nvidia",
-        model_name: str = "nvidia/nemotron-3-nano-30b-a3b",
+        model_name: str = settings.NVIDIA_MODEL,
         temperature: float = 1.0,
         top_p: float = 1.0,
         max_tokens: int = 16384,
@@ -26,7 +26,7 @@ class LLMEngine:
         logger.info(f"Initializing LLMEngine [{provider}] with model '{model_name}'...")
 
         if provider == "nvidia":
-            key = NVIDIA_API_KEY
+            key = settings.NVIDIA_API_KEY
             if not key:
                 raise ValueError(
                     "NVIDIA_API_KEY is not set in environment or passed to LLMEngine."

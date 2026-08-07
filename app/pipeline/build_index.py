@@ -12,7 +12,7 @@ from app.models.chunk import Chunk
 from app.processing.cleaner import TextCleaner
 from app.processing.extractor import DocumentExtractor
 from app.processing.metadata import ChunkProcessor
-from app.vectorstore.faiss_store import FAISSVectorStore
+from app.vectorstore_scripts.faiss_store import FAISSVectorStore
 
 
 def generate_chunk_batches(

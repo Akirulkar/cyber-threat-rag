@@ -4,6 +4,7 @@ from sentence_transformers import SentenceTransformer
 from app.models.chunk import Chunk
 import torch
 from app.core.logger import logger
+from app.core.config import settings
 
 
 class TextEmbedder:
@@ -11,7 +12,7 @@ class TextEmbedder:
 
     def __init__(
         self,
-        model_name: str = "BAAI/bge-base-en-v1.5",
+        model_name: str = settings.EMBEDDING_MODEL,
         device: Optional[str] = None,
     ):
         """Initializes the embedding model with automatic GPU/CPU detection.

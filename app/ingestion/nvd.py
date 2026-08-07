@@ -13,7 +13,7 @@ from app.ingestion.models import (
     Severity,
     IngestionSummary,
 )
-from app.core.config import NVD_API_KEY
+from app.core.config import settings
 
 
 class NVDIngestor(BaseIngestor):
@@ -25,8 +25,8 @@ class NVDIngestor(BaseIngestor):
         super().__init__(data_dir=data_dir)
         self.results_per_page = min(results_per_page, 2000)
         self.headers = {}
-        if NVD_API_KEY:
-            self.headers["apiKey"] = NVD_API_KEY
+        if settings.NVD_API_KEY:
+            self.headers["apiKey"] = settings.NVD_API_KEY
 
     @classmethod
     def get_source_type(cls) -> SourceType:
@@ -40,10 +40,12 @@ class NVDIngestor(BaseIngestor):
             end_time=datetime.now(timezone.utc),
         )
 
-        logger.info(f"Starting streaming ingestion for {self.get_source_type().value}...")
-        
+        logger.info(
+            f"Starting streaming ingestion for {self.get_source_type().value}..."
+        )
+
         start_index = 0
-        sleep_delay = 0.6 if NVD_API_KEY else 6.0
+        sleep_delay = 0.6 if settings.NVD_API_KEY else 6.0
 
         while True:
             params = {
@@ -59,7 +61,9 @@ class NVDIngestor(BaseIngestor):
                     timeout=60,
                 )
             except Exception as e:
-                logger.error(f"Failed to fetch batch starting at index {start_index}: {e}")
+                logger.error(
+                    f"Failed to fetch batch starting at index {start_index}: {e}"
+                )
                 summary.failed_count += self.results_per_page
                 break
 
@@ -76,7 +80,9 @@ class NVDIngestor(BaseIngestor):
                     else:
                         summary.skipped_count += 1
                 except Exception as parse_err:
-                    logger.warning(f"Failed parsing item in batch {start_index}: {parse_err}")
+                    logger.warning(
+                        f"Failed parsing item in batch {start_index}: {parse_err}"
+                    )
                     summary.failed_count += 1
 
             start_index += len(vulnerabilities)
@@ -110,7 +116,9 @@ class NVDIngestor(BaseIngestor):
             (d["value"] for d in descriptions if d.get("lang") == "en"),
             "No description available",
         )
-        title = (english_desc[:117] + "...") if len(english_desc) > 120 else english_desc
+        title = (
+            (english_desc[:117] + "...") if len(english_desc) > 120 else english_desc
+        )
 
         metrics = cve_data.get("metrics", {})
         severity = self._extract_severity(metrics)

@@ -6,6 +6,7 @@ from app.core.logger import logger
 from app.embedding.embedder import TextEmbedder
 from app.models.chunk import Chunk
 from app.vectorstore_scripts.sqlite_store import SQLiteMetadataStore
+from app.core.config import settings
 
 
 class DenseRetriever:
@@ -14,7 +15,7 @@ class DenseRetriever:
     def __init__(
         self,
         vectorstore_dir: str = "vectorstore",
-        model_name: str = "BAAI/bge-base-en-v1.5",
+        model_name: str = settings.EMBEDDING_MODEL,
     ):
         self.index_path = f"{vectorstore_dir}/faiss.index"
         self.db_path = f"{vectorstore_dir}/metadata.db"
