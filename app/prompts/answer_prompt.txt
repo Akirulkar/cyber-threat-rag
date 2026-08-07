@@ -1,0 +1,7 @@
+Context Chunks:
+{context}
+
+User Question:
+{question}
+
+Provide a clear, grounded answer with source citations based only on the context above:
