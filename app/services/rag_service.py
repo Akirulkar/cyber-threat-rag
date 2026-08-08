@@ -1,19 +1,17 @@
 import time
-from typing import Optional, Dict, Any
+from typing import Any, Dict, List, Optional
 
+from app.core.exceptions import ModelInferenceError, RAGPipelineException
 from app.core.logger import logger
-from app.core.exceptions import RAGPipelineException, ModelInferenceError
-from app.schemas.request import QueryRequest
-from app.schemas.response import QueryResponse
-
-# Core project imports matching Phase 4
 from app.pipeline.rag_pipeline import RAGPipeline
 from app.pipeline.retrieve import RetrievalPipeline
+from app.rag.llm import LLMEngine
 from app.retrieval.dense import DenseRetriever
-from app.retrieval.sparse import SparseRetriever
 from app.retrieval.hybrid import HybridRetriever
 from app.retrieval.reranker import CrossEncoderReranker
-from app.rag.llm import LLMEngine
+from app.retrieval.sparse import SparseRetriever
+from app.schemas.request import QueryRequest
+from app.schemas.response import QueryResponse
 
 
 class RAGService:
@@ -61,16 +59,34 @@ class RAGService:
 
         return self.pipeline
 
-    def query(self, question: str, top_n: int = 5) -> Dict[str, Any]:
-        """Synchronous query method used during testing."""
+    def query(
+        self,
+        question: str,
+        top_n: int = 5,
+        chat_history: Optional[List[Dict[str, str]]] = None,
+    ) -> Dict[str, Any]:
+        """Synchronous query method used during testing and direct service invocation."""
         pipeline = self._ensure_pipeline()
-        return pipeline.answer(question=question, top_n=top_n)
+        return pipeline.answer(
+            question=question, top_n=top_n, chat_history=chat_history
+        )
 
     async def execute_query(self, request: QueryRequest) -> QueryResponse:
-        """Async interface for FastAPI route handlers."""
+        """Async interface for FastAPI route handlers with chat history support."""
         try:
-            # Executes pipeline
-            result = self.query(question=request.query, top_n=request.top_k)
+            # Convert Pydantic Message models to dictionary format
+            history_dicts = (
+                [msg.model_dump() for msg in request.chat_history]
+                if request.chat_history
+                else []
+            )
+
+            # Executes pipeline with chat history
+            result = self.query(
+                question=request.query,
+                top_n=request.top_k,
+                chat_history=history_dicts,
+            )
 
             answer_text = result.get("answer", "")
             raw_sources = result.get("sources", [])
