@@ -11,7 +11,7 @@ from app.retrieval.query_processor import QueryProcessor
 
 
 class RAGPipeline:
-    """End-to-End RAG Pipeline with conditional retrieval bypass for meta/simplification queries."""
+    """End-to-End RAG Pipeline with direct meta-query bypass and empty-history guard."""
 
     def __init__(
         self,
@@ -35,37 +35,60 @@ class RAGPipeline:
         metrics = {}
         chat_history = chat_history or []
 
-        # 1. Rewrite Query and check if retrieval should be skipped
-        search_query, skip_retrieval = QueryProcessor.rewrite_query_with_history(
-            raw_query=question,
-            chat_history=chat_history,
-            llm_engine=self.llm,
-        )
-        metrics["processed_query"] = search_query
-        metrics["skip_retrieval"] = skip_retrieval
+        is_simplification = QueryProcessor.is_meta_or_formatting_request(question)
 
-        # 2. Skip Retrieval for Simplification / Meta Queries
-        if skip_retrieval and chat_history:
-            logger.info("Executing direct LLM re-formatting without vector retrieval.")
+        # 1. Handle Simplification Requests
+        if is_simplification:
+            # Case A: User cleared chat or history is empty -> Return clean message without vector search
+            if not chat_history:
+                logger.info(
+                    "Simplification requested with empty chat history. Returning prompt guidance."
+                )
+                metrics["skip_retrieval"] = True
+                metrics["total_latency_ms"] = round((time.time() - t0) * 1000, 2)
+                return {
+                    "question": question,
+                    "answer": "There is no previous conversation or vulnerability topic in our active chat session to simplify. Please ask a specific question first (for example: *'What is CVE-2024-3094?'*).",
+                    "sources": [],
+                    "metrics": metrics,
+                }
 
-            # Find the last assistant message in history
-            last_assistant_msg = ""
+            # Case B: History exists -> Simplify previous assistant response without vector retrieval
+            logger.info("Simplification query detected: Bypassing vector retrieval.")
+
+            first_user_query = ""
+            target_assistant_msg = ""
+
+            # Iterate backwards to get the latest completed turn
             for msg in reversed(chat_history):
-                if msg.get("role") == "assistant":
-                    last_assistant_msg = msg.get("content", "")
+                if msg.get("role") == "assistant" and not target_assistant_msg:
+                    target_assistant_msg = msg.get("content", "")
+                elif (
+                    msg.get("role") == "user"
+                    and not first_user_query
+                    and target_assistant_msg
+                ):
+                    first_user_query = msg.get("content", "")
                     break
 
             prompt = [
                 {
                     "role": "system",
                     "content": (
-                        "You are a cybersecurity assistant. The user wants you to explain or simplify "
-                        "your previous answer. Rely ONLY on the previous response content. Do NOT invent new details."
+                        "You are a cybersecurity expert. The user wants a simplified, plain-language explanation "
+                        "of a specific vulnerability discussed earlier in the conversation. "
+                        "Explain what the issue is, how it works, and why it matters in clear, non-technical terms. "
+                        "Rely ONLY on the provided context below. Do NOT introduce new CVEs or unmentioned software."
                     ),
                 },
                 {
                     "role": "user",
-                    "content": f"Previous Answer:\n{last_assistant_msg}\n\nUser Instruction: {question}\n\nSimplified Explanation:",
+                    "content": (
+                        f"Original Topic/Question: {first_user_query}\n\n"
+                        f"Detailed Technical Content:\n{target_assistant_msg}\n\n"
+                        f"User Request: {question}\n\n"
+                        "Simplified Plain-English Explanation:"
+                    ),
                 },
             ]
 
@@ -73,15 +96,23 @@ class RAGPipeline:
             answer_text = self.llm.generate(prompt)
             metrics["llm_generation_ms"] = round((time.time() - t_llm) * 1000, 2)
             metrics["total_latency_ms"] = round((time.time() - t0) * 1000, 2)
+            metrics["skip_retrieval"] = True
 
             return {
                 "question": question,
                 "answer": answer_text,
-                "sources": ["Previous Conversation Turn"],
+                "sources": ["Previous Conversation Summary"],
                 "metrics": metrics,
             }
 
-        # 3. Standard Hybrid Retrieval & Reranking
+        # 2. Standard Hybrid Retrieval & Reranking
+        search_query, _ = QueryProcessor.rewrite_query_with_history(
+            raw_query=question,
+            chat_history=chat_history,
+            llm_engine=self.llm,
+        )
+        metrics["processed_query"] = search_query
+
         retrieval_output = self.retriever.run(raw_query=search_query, top_n=top_n)
         reranked_results = retrieval_output["results"]
         metrics["retrieval_ms"] = retrieval_output["metrics"]["total_latency_ms"]
@@ -94,10 +125,8 @@ class RAGPipeline:
                 "metrics": {"total_latency_ms": round((time.time() - t0) * 1000, 2)},
             }
 
-        # 4. Context Assembly & Source Extraction
         context_str, sources = self.context_builder.build_context(reranked_results)
 
-        # 5. Construct Prompt & LLM Generation
         try:
             formatted_messages = self.prompt_builder.format(
                 context=context_str, question=question, chat_history=chat_history

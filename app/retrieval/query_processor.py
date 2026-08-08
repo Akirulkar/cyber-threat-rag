@@ -22,25 +22,39 @@ class QueryProcessor:
 
     @staticmethod
     def is_meta_or_formatting_request(raw_query: str) -> bool:
-        """Checks if the query is asking to simplify, rephrase, or format previous context."""
+        """Robust check for meta/formatting/simplification requests."""
         cleaned = raw_query.strip().lower()
 
-        formatting_patterns = [
-            r"explain.*simpler",
-            r"simpler\s+words",
-            r"simple\s+terms",
-            r"make\s+it\s+simpler",
-            r"summarize\s+this",
-            r"translate\s+this",
-            r"rephrase",
-            r"in\short",
-            r"tl;?dr",
-            r"bullet\s+points",
-            r"explain\s+like\s+i'?m\s+5",
-            r"eli5",
+        # Keywords that indicate the user wants a re-explanation of current context
+        phrases = [
+            "explain this",
+            "simpler words",
+            "simple terms",
+            "make it simpler",
+            "summarize this",
+            "translate this",
+            "rephrase",
+            "in short",
+            "tldr",
+            "tl;dr",
+            "bullet points",
+            "explain like i'm 5",
+            "eli5",
+            "simplify",
         ]
 
-        return any(re.search(pattern, cleaned) for pattern in formatting_patterns)
+        if any(phrase in cleaned for phrase in phrases):
+            return True
+
+        # Regex fallback for patterns like "explain ... in simpler ..."
+        regex_patterns = [
+            r"explain.*simpl",
+            r"simpl.*word",
+            r"simpl.*term",
+            r"what.*does.*this.*mean",
+        ]
+
+        return any(re.search(pattern, cleaned) for pattern in regex_patterns)
 
     @staticmethod
     def rewrite_query_with_history(
@@ -48,19 +62,15 @@ class QueryProcessor:
         chat_history: List[Dict[str, str]],
         llm_engine: Any = None,
     ) -> Tuple[str, bool]:
-        """
-        Returns a tuple of (processed_query, skip_retrieval).
-        If skip_retrieval is True, RAGPipeline bypasses vector search and relies on chat history.
-        """
         cleaned_query = QueryProcessor.process(raw_query)
 
         if not chat_history:
             return cleaned_query, False
 
-        # If user asks to simplify/rephrase previous response, bypass vector store retrieval
+        # Check for simplification/meta requests FIRST
         if QueryProcessor.is_meta_or_formatting_request(raw_query):
             logger.info(
-                f"Meta/formatting request detected for query: '{raw_query}'. Skipping retrieval."
+                f"Meta/formatting request detected for query: '{raw_query}'. Bypassing vector retrieval."
             )
             return cleaned_query, True
 

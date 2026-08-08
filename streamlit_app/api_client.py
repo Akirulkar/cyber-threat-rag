@@ -1,7 +1,7 @@
 # streamlit_app/api_client.py
 import os
 import requests
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -28,10 +28,19 @@ class APIClient:
         except requests.RequestException:
             return False
 
-    def query(self, question: str, top_k: int = 5) -> Dict[str, Any]:
-        """Send a threat intelligence query to POST /query."""
+    def query(
+        self,
+        question: str,
+        top_k: int = 5,
+        chat_history: Optional[List[Dict[str, str]]] = None,
+    ) -> Dict[str, Any]:
+        """Send a threat intelligence query with conversation history to POST /query."""
         url = f"{self.base_url}/query"
-        payload = {"query": question, "top_k": top_k}
+        payload = {
+            "query": question,
+            "top_k": top_k,
+            "chat_history": chat_history or [],
+        }
 
         try:
             response = requests.post(
@@ -40,13 +49,16 @@ class APIClient:
             if response.status_code == 200:
                 return {"success": True, "data": response.json()}
             elif response.status_code == 401:
-                return {"success": False, "error": "Unauthorized: Invalid API Key."}
+                return {
+                    "success": False,
+                    "error": "Unauthorized: Invalid API Key.",
+                }
             else:
                 return {
                     "success": False,
                     "error": f"Backend Error ({response.status_code}): {response.text}",
                 }
-        except requests.Timeout:
+        except requests.exceptions.Timeout:
             return {
                 "success": False,
                 "error": "Request timed out while waiting for LLM response.",
@@ -54,7 +66,7 @@ class APIClient:
         except requests.RequestException as e:
             return {
                 "success": False,
-                "error": f"Could not connect to FastAPI backend at {self.base_url}",
+                "error": f"Could not connect to FastAPI backend at {self.base_url}: {str(e)}",
             }
 
     def get_stats(self) -> Dict[str, Any]:

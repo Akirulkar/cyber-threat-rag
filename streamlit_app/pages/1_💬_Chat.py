@@ -22,32 +22,48 @@ for msg in st.session_state["messages"]:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
         if msg["role"] == "assistant":
-            if "sources" in msg:
+            if "sources" in msg and msg["sources"]:
                 render_sources(msg["sources"])
             if "latency_ms" in msg:
                 render_metrics(msg["latency_ms"], msg.get("retrieved_documents", 0))
 
 # User Input
 if prompt := st.chat_input("Ask about CVE-2024-3094, Cisco vulnerabilities, etc..."):
-    # Append user prompt to state
+    # 1. Capture existing conversation history BEFORE adding the current user prompt
+    history_payload = []
+    for msg in st.session_state["messages"]:
+        if msg.get("role") in ["user", "assistant"] and "content" in msg:
+            history_payload.append(
+                {
+                    "role": msg["role"],
+                    "content": str(msg["content"]),
+                }
+            )
+
+    # 2. Append current user message to session state for rendering
     st.session_state["messages"].append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
 
-    # Process query through FastAPI backend
+    # 3. Process query through FastAPI backend WITH chat_history payload
     with st.chat_message("assistant"):
         with st.spinner("Searching threat intelligence knowledge base..."):
-            response = api_client.query(question=prompt, top_k=5)
+            response = api_client.query(
+                question=prompt,
+                top_k=5,
+                chat_history=history_payload,  # <-- Pass collected history here
+            )
 
-        if response["success"]:
+        if response.get("success"):
             data = response["data"]
-            answer = data["answer"]
+            answer = data.get("answer", "")
             sources = data.get("sources", [])
             latency_ms = data.get("latency_ms", 0.0)
             retrieved_docs = data.get("retrieved_documents", 0)
 
             st.markdown(answer)
-            render_sources(sources)
+            if sources:
+                render_sources(sources)
             render_metrics(latency_ms, retrieved_docs)
 
             # Store assistant response in history
@@ -61,7 +77,7 @@ if prompt := st.chat_input("Ask about CVE-2024-3094, Cisco vulnerabilities, etc.
                 }
             )
         else:
-            error_msg = response["error"]
+            error_msg = response.get("error", "An unknown error occurred.")
             st.error(error_msg)
             st.session_state["messages"].append(
                 {"role": "assistant", "content": f"⚠️ Error: {error_msg}"}
