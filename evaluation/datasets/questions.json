@@ -1,0 +1,17 @@
+[
+  {
+    "question": "What is CVE-2024-3094?",
+    "ground_truth": "CVE-2024-3094 is a critical vulnerability involving malicious code discovered in the upstream tarballs of xz, starting with version 5.6.0.",
+    "source_target": "NVD"
+  },
+  {
+    "question": "What is MITRE technique T1059?",
+    "ground_truth": "T1059 represents Command and Scripting Interpreter where adversaries execute commands or scripts through system utilities.",
+    "source_target": "MITRE"
+  },
+  {
+    "question": "Is CVE-2024-3094 listed in the CISA Known Exploited Vulnerabilities catalog?",
+    "ground_truth": "I could not find sufficient threat intelligence in the database to confirm CISA KEV listing for CVE-2024-3094.",
+    "source_target": "CISA"
+  }
+]

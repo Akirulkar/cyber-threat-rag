@@ -1,0 +1,53 @@
+[
+    {
+        "user_input":"What is CVE-2024-3094?",
+        "retrieved_contexts":[
+            "CVE ID: CVE-2024-3090",
+            "CVE ID: CVE-2024-3094\nDescription: Malicious code was discovered in the upstream tarballs of xz, starting with version 5.6.0.",
+            "CVE ID: CVE-2024-20942",
+            "CVE ID: CVE-2018-3094",
+            "CVE ID: CVE-2024-20943"
+        ],
+        "response":"- CVE-2024-3094 is a critical vulnerability.  \n- It involves malicious code discovered in the upstream tarballs of xz, starting with version 5.6.0.  \n- (Source #2)",
+        "reference":"CVE-2024-3094 is a critical vulnerability involving malicious code discovered in the upstream tarballs of xz, starting with version 5.6.0.",
+        "faithfulness":0.3333333333,
+        "answer_relevancy":0.5955088305,
+        "context_precision":0.5,
+        "context_recall":1.0,
+        "answer_correctness":0.8829887045
+    },
+    {
+        "user_input":"What is MITRE technique T1059?",
+        "retrieved_contexts":[
+            "Technique Name: Automated Collection\nDescription: Once established within a system or network, an adversary may use automated techniques for collecting internal data. Methods for performing this technique could include use of a [Command and Scripting Interpreter](https:\/\/attack.mitre.org\/techniques\/T1059) to search for and copy information fitting set criteria such as file type, location, or name at specific time intervals.",
+            ". [Web Portal Capture](https:\/\/attack.mitre.org\/techniques\/T1056\/003)).",
+            ". Some methods of executing a program rely on the PATH environment variable to determine the locations that are searched when the path for the program is not given, such as executing programs from a [Command and Scripting Interpreter](https:\/\/attack.mitre.org\/techniques\/T1059).",
+            ". Adversaries may encode these malicious payloads, using binary, Base64, or custom schemes, to be reconstructed at runtime through scripting features such as [JavaScript](https:\/\/attack.mitre.org\/techniques\/T1059\/007) Proxy traps, `eval()`, or other dynamic execution methods. This technique enables adversaries to evade visual inspection and basic static analysis by hiding malicious encoded content in innocuous text.",
+            ". Linux environments support several different IPC mechanisms, two of which being sockets and pipes. Higher level execution mediums, such as those of [Command and Scripting Interpreter](https:\/\/attack.mitre.org\/techniques\/T1059)s, may also leverage underlying IPC mechanisms. Adversaries may also use [Remote Services](https:\/\/attack.mitre.org\/techniques\/T1021) such as [Distributed Component Object Model](https:\/\/attack.mitre.org\/techniques\/T1021\/003) to facilitate remote IPC execution."
+        ],
+        "response":"- MITRE technique T1059 is titled **\"Command and Scripting Interpreter\"**.  \n- It describes adversary use of command-line shells, scripting languages, and other interpreters to execute commands, scripts, and payloads on a target system.  \n- The technique is cited in the context as a method for:  \n  - Automated data collection ([SOURCE #1])  \n  - Executing programs via the PATH environment variable ([SOURCE #3])  \n  - Running encoded malicious content through scripting features such as JavaScript `eval()` ([SOURCE #4])  \n  - Leveraging underlying IPC mechanisms and remote services ([SOURCE #5])  \n- Sources: [SOURCE #1], [SOURCE #3], [SOURCE #5]",
+        "reference":"T1059 represents Command and Scripting Interpreter where adversaries execute commands or scripts through system utilities.",
+        "faithfulness":0.7142857143,
+        "answer_relevancy":0.9707704989,
+        "context_precision":0.8041666666,
+        "context_recall":1.0,
+        "answer_correctness":0.3418430971
+    },
+    {
+        "user_input":"Is CVE-2024-3094 listed in the CISA Known Exploited Vulnerabilities catalog?",
+        "retrieved_contexts":[
+            "CVE ID: CVE-2024-3094\nDescription: Malicious code was discovered in the upstream tarballs of xz, starting with version 5.6.0.",
+            "CVE ID: CVE-2024-3090",
+            "CVE ID: CVE-2024-1914\nDescription: An attacker who successfully exploited these vulnerabilities could cause the robot to stop, make the robot controller inaccessible. \n\nThe vulnerability could potentially be exploited to perform unauthorized actions by an attacker. This vulnerability arises under specific condition when specially crafted message is processed by the system. \n\nBelow are reported vulnerabilities in the Robot Ware versions.",
+            "CVE ID: CVE-2024-1394",
+            "CVE ID: CVE-2018-3094"
+        ],
+        "response":"I could not find sufficient threat intelligence in the database to answer this question.",
+        "reference":"I could not find sufficient threat intelligence in the database to confirm CISA KEV listing for CVE-2024-3094.",
+        "faithfulness":0.0,
+        "answer_relevancy":0.0,
+        "context_precision":0.0,
+        "context_recall":0.0,
+        "answer_correctness":0.576608935
+    }
+]

@@ -1,3 +1,4 @@
+# app/pipeline/retrieve.py
 import time
 from typing import Any, Dict
 
@@ -21,9 +22,9 @@ class RetrievalPipeline:
         # 1. Preprocess Query
         query = QueryProcessor.process(raw_query)
 
-        # 2. Hybrid Search (Dense + Sparse)
+        # 2. Hybrid Search with increased candidate depth (50 each stream)
         t_search = time.time()
-        candidates = self.hybrid_retriever.retrieve(query, dense_k=20, sparse_k=20)
+        candidates = self.hybrid_retriever.retrieve(query, dense_k=50, sparse_k=50)
         metrics["hybrid_search_ms"] = round((time.time() - t_search) * 1000, 2)
         metrics["candidates_found"] = len(candidates)
 

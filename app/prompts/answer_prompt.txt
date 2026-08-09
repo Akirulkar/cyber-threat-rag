@@ -4,4 +4,4 @@ Context Chunks:
 User Question:
 {question}
 
-Provide a clear, grounded answer with source citations based only on the context above:
+Provide a clear, grounded answer using standard bullet points and plain ASCII characters. If the context is insufficient, output ONLY the refusal sentence:

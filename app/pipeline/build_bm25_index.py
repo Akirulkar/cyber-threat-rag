@@ -1,3 +1,4 @@
+# app/pipeline/build_bm25_index.py
 import pickle
 import re
 from pathlib import Path
@@ -8,8 +9,15 @@ from app.vectorstore_scripts.sqlite_store import SQLiteMetadataStore
 
 
 def tokenize_text(text: str) -> list[str]:
-    """Tokenizes text for BM25 keyword matching."""
-    return re.findall(r"\w+", text.lower())
+    """Tokenizes text for BM25 keyword matching while preserving CVE IDs as single tokens."""
+    cve_pattern = r"CVE-\d{4}-\d{4,7}"
+    cves = [c.upper() for c in re.findall(cve_pattern, text, flags=re.IGNORECASE)]
+
+    # Remove CVE strings temporarily to process standard words
+    text_sans_cves = re.sub(cve_pattern, "", text, flags=re.IGNORECASE)
+    words = re.findall(r"\w+", text_sans_cves.lower())
+
+    return cves + words
 
 
 def build_bm25_index(vectorstore_dir: str = "vectorstore"):

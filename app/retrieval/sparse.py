@@ -1,3 +1,4 @@
+# app/retrieval/sparse.py
 import pickle
 import re
 from pathlib import Path
@@ -31,13 +32,16 @@ class SparseRetriever:
 
     @staticmethod
     def _tokenize(text: str) -> list[str]:
-        return re.findall(r"\w+", text.lower())
+        cve_pattern = r"CVE-\d{4}-\d{4,7}"
+        cves = [c.upper() for c in re.findall(cve_pattern, text, flags=re.IGNORECASE)]
+        text_sans_cves = re.sub(cve_pattern, "", text, flags=re.IGNORECASE)
+        words = re.findall(r"\w+", text_sans_cves.lower())
+        return cves + words
 
     def retrieve(self, query: str, top_k: int = 20) -> List[Tuple[Chunk, float]]:
         tokenized_query = self._tokenize(query)
         scores = self.bm25.get_scores(tokenized_query)
 
-        # Get top_k indices sorted by BM25 score
         top_indices = sorted(range(len(scores)), key=lambda i: scores[i], reverse=True)[
             :top_k
         ]
